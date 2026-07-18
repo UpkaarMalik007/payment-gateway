@@ -4,6 +4,8 @@ import "./config/redis";
 import cookieParser from "cookie-parser";
 import authRoutes from "./modules/auth/auth.routes";
 import merchantRoutes from "./modules/merchants/merchants.routes";
+import paymentsRoutes from "./modules/payments/payments.routes";
+import refundsRoutes from "./modules/refunds/refunds.routes";
 
 const app = express();
 
@@ -27,6 +29,8 @@ app.get("/db-check", async (req, res) => {
 // Routes
 app.use("/auth", authRoutes);
 app.use("/merchants", merchantRoutes);
+app.use("/", paymentsRoutes);
+app.use("/", refundsRoutes);
 app.get("/health", (req: Request, res: Response) => {
   res.status(200).json({ status: "ok" });
 });
