@@ -3,6 +3,7 @@ import { pool } from "./config/db";
 import "./config/redis";
 import cookieParser from "cookie-parser";
 import authRoutes from "./modules/auth/auth.routes";
+import merchantRoutes from "./modules/merchants/merchants.routes";
 
 const app = express();
 
@@ -10,7 +11,7 @@ const app = express();
 app.use(cookieParser());
 app.use(express.json());
 
-app.use("/auth", authRoutes);
+
 
 app.get("/db-check", async (req, res) => {
   try {
@@ -24,6 +25,8 @@ app.get("/db-check", async (req, res) => {
 
 
 // Routes
+app.use("/auth", authRoutes);
+app.use("/merchants", merchantRoutes);
 app.get("/health", (req: Request, res: Response) => {
   res.status(200).json({ status: "ok" });
 });
