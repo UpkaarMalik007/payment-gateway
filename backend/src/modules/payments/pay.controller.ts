@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { findPaymentById, updatePaymentStatus } from "./payments.queries";
+import { notificationQueue } from "../../queues/notificationQueue";
 
 export async function getPublicPayment(req: Request, res: Response) {
   const payment = await findPaymentById(req.params.id as string);
@@ -37,6 +38,11 @@ export async function completePayment(req: Request, res: Response) {
 
   // TODO once Phase 5 is built: enqueue a notification job here
   // await notificationQueue.add("send-notification", { paymentId: updated.id, eventType: `payment.${newStatus}` });
+  await notificationQueue.add(
+  "send-notification",
+  { paymentId: updated.id, eventType: `payment.${newStatus}` },
+  { attempts: 5, backoff: { type: "exponential", delay: 3000 } }
+);
 
   return res.json(sanitize(updated));
 }

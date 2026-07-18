@@ -2,6 +2,7 @@ import { Response } from "express";
 import { AuthRequest } from "../../middleware/authGuard";
 import { findPaymentByIdForMerchant } from "../payments/payments.queries";
 import { getTotalRefunded, createRefundWithStatusUpdate, listRefundsForPayment } from "./refunds.queries";
+import { notificationQueue } from "../../queues/notificationQueue";
 
 export async function createRefundController(req: AuthRequest, res: Response) {
   const merchantId = req.merchantId!;
@@ -46,6 +47,11 @@ export async function createRefundController(req: AuthRequest, res: Response) {
   const refund = await createRefundWithStatusUpdate(paymentId, refundAmountPaise, reason, newStatus);
 
   // TODO once Phase 5 is built: enqueue a "payment.refunded" notification job here
+  await notificationQueue.add(
+  "send-notification",
+  { paymentId, eventType: `payment.${newStatus}` }, // newStatus is "refunded" or "partially_refunded"
+  { attempts: 5, backoff: { type: "exponential", delay: 3000 } }
+);
 
   return res.status(201).json({ refund, newPaymentStatus: newStatus });
 }

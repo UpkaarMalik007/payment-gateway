@@ -5,7 +5,6 @@ import { getPublicPayment, completePayment } from "./pay.controller";
 
 const router = Router();
 
-console.log("payments.routes loaded");
 router.get("/test", (req, res) => {
   res.send("Payments route is working");
 });
