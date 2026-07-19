@@ -106,7 +106,7 @@ export default function CreatePayment() {
                     type="number"
                     step="0.01"
                     min="1"
-                    placeholder="500.00"
+                    placeholder="00.00"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                     className="w-full rounded-lg bg-slate-100 border border-transparent focus:border-teal-500 focus:bg-white px-4 py-3 text-sm outline-none transition"
@@ -117,7 +117,7 @@ export default function CreatePayment() {
                   <label className="text-sm font-semibold text-slate-800 mb-1 block">Customer name</label>
                   <input
                     type="text"
-                    placeholder="Rahul Sharma"
+                    placeholder="John Anderson"
                     value={customerName}
                     onChange={(e) => setCustomerName(e.target.value)}
                     className="w-full rounded-lg bg-slate-100 border border-transparent focus:border-teal-500 focus:bg-white px-4 py-3 text-sm outline-none transition"
@@ -128,7 +128,7 @@ export default function CreatePayment() {
                   <label className="text-sm font-semibold text-slate-800 mb-1 block">Customer email</label>
                   <input
                     type="email"
-                    placeholder="rahul@example.com"
+                    placeholder="john.anderson@example.com"
                     value={customerEmail}
                     onChange={(e) => setCustomerEmail(e.target.value)}
                     className="w-full rounded-lg bg-slate-100 border border-transparent focus:border-teal-500 focus:bg-white px-4 py-3 text-sm outline-none transition"
@@ -182,18 +182,12 @@ export default function CreatePayment() {
               <div className="flex gap-3">
                 <Link
                   to="/dashboard"
-                  className="flex-1 border border-slate-200 rounded-lg py-3 font-semibold text-slate-700 hover:bg-slate-50 transition text-center"
+                  className="flex-1 border border-slate-200 rounded-lg py-3 font-semibold text-slate-700 hover:bg-slate-400 transition text-center"
                 >
                   Back to dashboard
                 </Link>
                 
-                <a href={result.payLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex-1 bg-slate-800 hover:bg-slate-900 text-white rounded-lg py-3 font-semibold transition text-center"
-                >
-                  Open pay page
-                </a>
+                
               </div>
             </div>
           )}

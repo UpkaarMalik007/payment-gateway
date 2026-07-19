@@ -6,7 +6,7 @@ Live URLs
 
 API: https://your-backend-url.onrender.com
 Dashboard: https://your-frontend-url.vercel.app
-Repository: https://github.com/your-username/payment-gateway
+Repository: https://github.com/UpkaarMalik007/payment-gateway
 
 Tech stack
 
