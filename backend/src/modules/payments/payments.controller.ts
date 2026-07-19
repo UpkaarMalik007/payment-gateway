@@ -1,14 +1,15 @@
 import { Response } from "express";
 import QRCode from "qrcode";
 import { AuthRequest } from "../../middleware/authGuard";
+import { notificationQueue } from "../../queues/notificationQueue";
 
 import {
   createPayment,
   findPaymentByIdempotencyKey,
   listPaymentsForMerchant,
   findPaymentByIdForMerchant,
+  updatePaymentStatus,
 } from "./payments.queries";
-
 
 const EXPIRY_MINUTES = 15;
 
@@ -53,7 +54,7 @@ export async function createPaymentController(req: AuthRequest, res: Response) {
     return res.status(201).json({ payment, payLink, qrCode, expiresAt: payment.expires_at });
   } catch (err: any) {
     if (err.code === "23505") {
-      // duplicate idempotency key — return the original payment, not an error
+
       const existing = await findPaymentByIdempotencyKey(idempotencyKey);
       const payLink = `${process.env.FRONTEND_URL}/pay/${existing.id}`;
       const qrCode = await QRCode.toDataURL(payLink);
@@ -79,10 +80,49 @@ export async function listPaymentsController(req: AuthRequest, res: Response) {
 
 export async function getPaymentController(req: AuthRequest, res: Response) {
   const merchantId = req.merchantId!;
+  let payment = await findPaymentByIdForMerchant(req.params.id as string, merchantId);
+
+  if (!payment) {
+    return res.status(404).json({ error: "Payment not found" });
+  }
+
+
+  if (payment.status === "pending" && new Date() > new Date(payment.expires_at)) {
+    payment = await updatePaymentStatus(payment.id, "expired");
+    await notificationQueue.add(
+      "send-notification",
+      { paymentId: payment.id, eventType: "payment.expired" },
+      { attempts: 5, backoff: { type: "exponential", delay: 3000 } }
+    );
+  }
+
+  return res.json(payment);
+}
+
+export async function getPaymentShareLink(req: AuthRequest, res: Response) {
+  const merchantId = req.merchantId!;
   const payment = await findPaymentByIdForMerchant(req.params.id as string, merchantId);
 
   if (!payment) {
     return res.status(404).json({ error: "Payment not found" });
   }
-  return res.json(payment);
+
+  if (payment.status === "pending" && new Date() > new Date(payment.expires_at)) {
+    await updatePaymentStatus(payment.id, "expired");
+    await notificationQueue.add(
+      "send-notification",
+      { paymentId: payment.id, eventType: "payment.expired" },
+      { attempts: 5, backoff: { type: "exponential", delay: 3000 } }
+    );
+    return res.status(400).json({ error: "This payment request has expired" });
+  }
+
+  if (payment.status !== "pending") {
+    return res.status(400).json({ error: `Cannot generate a share link for a payment with status "${payment.status}"` });
+  }
+
+  const payLink = `${process.env.FRONTEND_URL}/pay/${payment.id}`;
+  const qrCode = await QRCode.toDataURL(payLink);
+
+  return res.json({ payLink, qrCode, expiresAt: payment.expires_at });
 }

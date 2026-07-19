@@ -1,7 +1,7 @@
 import { Worker } from "bullmq";
 import axios from "axios";
 import { upsertNotificationAttempt, updateNotificationStatus } from "../modules/notifications/notifications.queries";
-
+console.log("Worker sees PORT as:", process.env.PORT);
 const connection = { url: process.env.REDIS_URL! };
 
 async function attemptDelivery(paymentId: string, eventType: string): Promise<boolean> {
@@ -11,7 +11,8 @@ async function attemptDelivery(paymentId: string, eventType: string): Promise<bo
       paymentId,
     });
     return response.status === 200;
-  } catch {
+  } catch (err: any) {
+    console.error("Webhook delivery error:", err.message); // ← add this
     return false;
   }
 }

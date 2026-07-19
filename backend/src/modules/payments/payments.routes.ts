@@ -1,19 +1,15 @@
 import { Router } from "express";
 import { authGuard } from "../../middleware/authGuard";
-import { createPaymentController, listPaymentsController, getPaymentController } from "./payments.controller";
+import { createPaymentController, listPaymentsController, getPaymentController, getPaymentShareLink } from "./payments.controller";
 import { getPublicPayment, completePayment } from "./pay.controller";
 
 const router = Router();
 
-router.get("/test", (req, res) => {
-  res.send("Payments route is working");
-});
-// merchant-only, protected
-router.post("/createPayments", authGuard, createPaymentController);
-router.get("/getAllPayments", authGuard, listPaymentsController);
-router.get("/payments/:id", authGuard, getPaymentController);
 
-// public, no auth
+router.post("/payments", authGuard, createPaymentController);
+router.get("/payments", authGuard, listPaymentsController);
+router.get("/payments/:id", authGuard, getPaymentController);
+router.get("/payments/:id/share", authGuard, getPaymentShareLink);
 router.get("/pay/:id", getPublicPayment);
 router.post("/pay/:id/complete", completePayment);
 

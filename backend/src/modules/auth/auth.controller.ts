@@ -304,7 +304,7 @@ export async function logout(req: Request, res: Response) {
         );
 
       } catch {
-        // Ignore invalid refresh token
+
       }
     }
 

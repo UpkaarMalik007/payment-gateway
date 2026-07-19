@@ -4,6 +4,6 @@ import { getMe } from "./merchants.controller";
 
 const router = Router();
 
-router.get("/getMe", authGuard, getMe);
+router.get("/me", authGuard, getMe);
 
 export default router;

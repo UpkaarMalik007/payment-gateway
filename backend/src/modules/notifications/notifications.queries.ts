@@ -29,7 +29,7 @@ export async function updateNotificationStatus(id: string, status: string) {
   await pool.query(`UPDATE notifications SET status = $1 WHERE id = $2`, [status, id]);
 }
 
-// called by: GET /payments/:id/notifications
+
 export async function listNotificationsForPayment(paymentId: string) {
   const result = await pool.query(
     `SELECT * FROM notifications WHERE payment_id = $1 ORDER BY created_at DESC`,

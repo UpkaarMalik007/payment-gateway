@@ -1,6 +1,6 @@
 import { pool } from "../../config/db";
 
-// called by: POST /payments
+
 export async function createPayment(data: {
   merchantId: string;
   amount: number;
@@ -18,13 +18,13 @@ export async function createPayment(data: {
   return result.rows[0];
 }
 
-// called by: POST /payments (when a duplicate idempotency key is caught, error code 23505)
+
 export async function findPaymentByIdempotencyKey(key: string) {
   const result = await pool.query(`SELECT * FROM payments WHERE idempotency_key = $1`, [key]);
   return result.rows[0] || null;
 }
 
-// called by: GET /payments (merchant's own list, with optional status filter)
+
 export async function listPaymentsForMerchant(merchantId: string, status?: string) {
   if (status) {
     const result = await pool.query(
@@ -40,7 +40,7 @@ export async function listPaymentsForMerchant(merchantId: string, status?: strin
   return result.rows;
 }
 
-// called by: GET /payments/:id (merchant dashboard — deliberately scoped, this IS the IDOR protection)
+
 export async function findPaymentByIdForMerchant(id: string, merchantId: string) {
   const result = await pool.query(
     `SELECT * FROM payments WHERE id = $1 AND merchant_id = $2`,
@@ -49,13 +49,13 @@ export async function findPaymentByIdForMerchant(id: string, merchantId: string)
   return result.rows[0] || null;
 }
 
-// called by: GET /pay/:id and POST /pay/:id/complete (public — no merchant check, customer isn't logged in)
+
 export async function findPaymentById(id: string) {
   const result = await pool.query(`SELECT * FROM payments WHERE id = $1`, [id]);
   return result.rows[0] || null;
 }
 
-// called by: POST /pay/:id/complete, and internally whenever status changes (expiry, refunds)
+
 export async function updatePaymentStatus(id: string, status: string) {
   const result = await pool.query(
     `UPDATE payments SET status = $1, updated_at = now() WHERE id = $2 RETURNING *`,
