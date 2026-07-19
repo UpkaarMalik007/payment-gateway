@@ -1,123 +1,265 @@
-PayGate — Mini Payment Gateway
+# PayGate — Mini Payment Gateway
 
 A simulated payment gateway built for the AND Payments full-stack assignment. Merchants can register, create payment requests (with a shareable link and QR code), and customers can complete or fail those payments through a separate public flow. Refunds, notification retries, and full delivery tracking are built on top.
 
-Live URLs
+## 🚀 Live URLs
 
-API: https://your-backend-url.onrender.com
-Dashboard: https://your-frontend-url.vercel.app
-Repository: https://github.com/UpkaarMalik007/payment-gateway
+- **API:** https://your-backend-url.onrender.com
+- **Dashboard:** https://your-frontend-url.vercel.app
+- **Repository:** https://github.com/UpkaarMalik007/payment-gateway
 
-Tech stack
+---
 
-LayerChoiceBackendNode.js, Express, TypeScriptDatabasePostgreSQL (raw SQL via pg, no ORM)Caching / QueueRedis (Upstash) + BullMQAuthJWT access + refresh tokens, bcrypt, Redis-based token blacklistFrontendReact, TypeScript, Vite, Tailwind CSS, Hosting Backend + frontend on Render, DB on Neon, Redis on Upstash
+## 📚 Tech Stack
 
-Setup — running locally
+| Layer | Technology |
+|-------|-----------|
+| **Backend** | Node.js, Express, TypeScript |
+| **Database** | PostgreSQL (raw SQL via `pg`, no ORM) |
+| **Caching & Queue** | Redis (Upstash) + BullMQ |
+| **Authentication** | JWT (access + refresh tokens), bcrypt, Redis-based token blacklist |
+| **Frontend** | React, TypeScript, Vite, Tailwind CSS |
+| **Hosting** | Backend & frontend on Render, DB on Neon, Redis on Upstash |
 
-Prerequisites
+---
 
-Node.js (v18+)
-A PostgreSQL database (I used Neon, free tier)
-A Redis instance (I used Upstash, free tier)
+## 🔧 Local Setup
 
-Backend
+### Prerequisites
 
-bashcd backend
+- Node.js (v18+)
+- PostgreSQL database (e.g., [Neon](https://neon.tech) free tier)
+- Redis instance (e.g., [Upstash](https://upstash.com) free tier)
+
+### Backend Setup
+
+```bash
+cd backend
 npm install
+```
 
-Copy .env.example to .env and fill in real values:
+**Configure environment variables:**
 
-DATABASE_URL=postgresql://...
-REDIS_URL=rediss://...
-JWT_ACCESS_SECRET=<generate with: openssl rand -base64 32>
+Create `.env` (copy from `.env.example`):
+
+```env
+DATABASE_URL=postgresql://[user]:[password]@[host]/[db]
+REDIS_URL=rediss://[user]:[password]@[host]:[port]
+JWT_ACCESS_SECRET=<run: openssl rand -base64 32>
 JWT_REFRESH_SECRET=<a different long random string>
 PORT=4000
 NODE_ENV=development
 FRONTEND_URL=http://localhost:5173
+```
 
-Create the schema (run once):
+**Initialize the database:**
 
-bashpsql "$DATABASE_URL" -f db/schema.sql
+```bash
+psql "$DATABASE_URL" -f db/schema.sql
+```
 
-Start the server:
+**Start the server:**
 
-bashnpm run dev
+```bash
+npm run dev
+```
 
-Visit http://localhost:4000/health — should return {"status":"ok"}.
+Verify: Visit `http://localhost:4000/health` → should return `{"status":"ok"}`
 
-Frontend
+### Frontend Setup
 
-bashcd frontend
+```bash
+cd frontend
 npm install
+```
 
-Copy .env.example to .env:
+**Configure environment variables:**
 
+Create `.env` (copy from `.env.example`):
+
+```env
 VITE_API_URL=http://localhost:4000
+```
 
-bashnpm run dev
+**Start the development server:**
 
-Visit http://localhost:5173.
+```bash
+npm run dev
+```
 
-Architecture overview
+Visit `http://localhost:5173`
 
-React Dashboard (merchant, authenticated)
-Public Pay Page (customer, no login)
-│
-▼
-Express API ── PostgreSQL (merchants, payments, refunds, notifications)
-│
-└────── Redis (token blacklist, BullMQ job queue)
-│
-▼
-Notification Worker (BullMQ)
-retries failed deliveries with backoff
+---
 
-Two distinct trust boundaries exist in one system: an authenticated merchant dashboard, and a public, unauthenticated customer-facing payment page scoped only by an unguessable payment ID — mirroring how real payment links (e.g. UPI, Stripe Payment Links) work.
+## 🏗️ Architecture Overview
 
-Database schema
+```
+┌─────────────────────────────────────────┐
+│  React Dashboard (Merchant - Auth)      │
+│  ↓                                      │
+│  Public Pay Page (Customer - No Login)  │
+└─────────────────────────────────────────┘
+              ↓
+┌─────────────────────────────────────────┐
+│        Express API                       │
+├─────────────────────────────────────────┤
+│  ├─ PostgreSQL                          │
+│  │  (merchants, payments, refunds,      │
+│  │   notifications)                     │
+│  │                                      │
+│  └─ Redis + BullMQ                      │
+│     (token blacklist, job queue)        │
+└─────────────────────────────────────────┘
+              ↓
+┌─────────────────────────────────────────┐
+│  Notification Worker (BullMQ)            │
+│  Retries failed deliveries with backoff │
+└─────────────────────────────────────────┘
+```
 
-Four tables, plain SQL (db/schema.sql), no ORM:
+### Trust Boundaries
 
-merchants — id, name, email (unique), password (bcrypt hash), created_at
-payments — id, merchant_id (FK), amount (int, paise), customer_name, customer_email, status, idempotency_key (unique), expires_at, created_at, updated_at
-refunds — id, payment_id (FK), amount (int, paise), reason, created_at
-notifications — id, payment_id (FK), event_type, status, attempt_count, last_attempt_at, created_at
+Two distinct trust boundaries in one system:
 
-Payment status lifecycle:
+1. **Authenticated Merchant Dashboard** — Merchants log in, create and manage payments.
+2. **Public Pay Page** — Unauthenticated customers access payments via unguessable payment ID (similar to Stripe Payment Links or UPI).
 
-pending → completed → partially_refunded → refunded
-│
-├─→ failed
-└─→ expired (if not completed within 15 minutes)
+---
 
-Key design decisions
+## 📊 Database Schema
 
-PostgreSQL over MongoDB. Payments have strict relational rules — a refund can never exceed its payment, every refund/notification must belong to exactly one payment. Postgres enforces this at the database level with foreign keys, CHECK constraints, and a unique constraint on idempotency_key, rather than relying entirely on application code to get every check right.
+**Four tables** (plain SQL, no ORM) — see `db/schema.sql`:
 
-Raw SQL over an ORM. I use the pg driver directly with parameterized queries, organized as query functions per module (payments.queries.ts, etc.), instead of Prisma or another ORM. This means every query the app runs is explicit and reviewable — nothing is generated behind the scenes. Multi-step operations (like a refund + status update) use manual BEGIN/COMMIT/ROLLBACK transactions.
+| Table | Purpose |
+|-------|---------|
+| **merchants** | `id`, `name`, `email` (unique), `password` (bcrypt), `created_at` |
+| **payments** | `id`, `merchant_id` (FK), `amount` (paise), `customer_name`, `customer_email`, `status`, `idempotency_key` (unique), `expires_at`, `created_at`, `updated_at` |
+| **refunds** | `id`, `payment_id` (FK), `amount` (paise), `reason`, `created_at` |
+| **notifications** | `id`, `payment_id` (FK), `event_type`, `status`, `attempt_count`, `last_attempt_at`, `created_at` |
 
-Simulated payment completion, not a real gateway integration. The assignment's core requirements — lifecycle management, idempotency, refund validation, notification retries — are identical in difficulty whether the underlying "payment" is real or simulated. A real Razorpay/Stripe integration would require business KYC and sandbox setup outside this assignment's scope, and wouldn't change how the payment state machine, idempotency, or refund logic is designed. In production, only the POST /pay/:id/complete endpoint would be replaced by a real gateway's webhook listener — the rest of the system stays the same.
+### Payment Status Lifecycle
 
-Idempotency via a client-generated key. The frontend generates a fresh UUID per "create payment" click, sent as an Idempotency-Key header. The backend enforces uniqueness with a database constraint, not just an application-level check, so it holds even under concurrent duplicate requests. If the same key is sent twice, the original payment is returned instead of creating a duplicate.
+```
+pending
+  ├─→ completed ─→ partially_refunded → refunded
+  ├─→ failed
+  └─→ expired (if not completed within 15 min)
+```
 
-Payment expiry with QR code sharing. Payment requests expire 15 minutes after creation, mimicking real payment link/UPI behavior. Expiry is enforced lazily — checked whenever a payment is read or acted on, rather than via a background scheduler — a deliberate scope trade-off for this assignment's size. The QR code simply encodes the same pay link; scanning it and clicking the link lead to the identical public pay page.
+---
 
-JWT access + refresh tokens with Redis-based blacklisting. Access tokens are short-lived (15 min) and never stored in localStorage — they're kept in memory on the frontend. Refresh tokens (7 days) live in an httpOnly, secure, sameSite cookie, invisible to frontend JavaScript. On logout, the refresh token's unique jti is stored in Redis with a TTL equal to its remaining lifetime, so a logged-out token is immediately unusable even though JWTs are otherwise stateless and can't normally be individually revoked.
+## 🎯 Key Design Decisions
 
-Notifications via BullMQ, treated as real webhooks. Every status change (completed, failed, refunded, partially refunded, expired) enqueues a job. A worker attempts delivery via an HTTP POST to a webhook receiver, with 5 retry attempts and exponential backoff on failure. Every attempt — success or failure — is logged to the notifications table, satisfying the requirement that all delivery attempts be tracked. In production, the receiver URL would come from a webhookUrl field the merchant configures; the sender-side logic wouldn't need to change.
+### 1. PostgreSQL over MongoDB
 
-IDOR protection via query scoping, not application-level checks. Every merchant-facing query includes WHERE merchant_id = $1 using the ID from the verified JWT — never from the request body or URL. A merchant requesting another merchant's payment by ID gets a 404, not their data.
+**Why?** Payments have strict relational rules:
+- A refund can never exceed its payment
+- Every refund/notification must belong to exactly one payment
+- Postgres enforces this at the database level with **foreign keys**, **CHECK constraints**, and **unique constraints** on idempotency keys — rather than relying entirely on application code.
 
-API endpoints
+### 2. Raw SQL over ORM
 
-Auth — POST /auth/register, POST /auth/login, POST /auth/refresh, POST /auth/logout
+**Why?** Using the `pg` driver directly with parameterized queries:
+- Every query is explicit and reviewable — nothing is hidden behind generation
+- Queries are organized by module (e.g., `payments.queries.ts`)
+- Multi-step operations use manual `BEGIN`/`COMMIT`/`ROLLBACK` transactions
+- No surprises from ORM magic
 
-Merchant — GET /merchants/me
+### 3. Simulated Payment Completion
 
-Payments (merchant, authenticated) — POST /payments, GET /payments, GET /payments/:id, GET /payments/:id/share
+**Why?** The assignment's core requirements — lifecycle management, idempotency, refund validation, notification retries — are identical whether the payment is real or simulated. A real Razorpay/Stripe integration would require business KYC outside this scope and wouldn't change the state machine or refund logic.
 
-Pay page (public) — GET /pay/:id, POST /pay/:id/complete
+**In production:** Only the `POST /pay/:id/complete` endpoint would be replaced by a real gateway's webhook listener — the rest stays the same.
 
-Refunds (merchant, authenticated) — POST /payments/:id/refunds, GET /payments/:id/refunds
+### 4. Idempotency via Client-Generated Key
 
-Notifications (merchant, authenticated) — GET /payments/:id/notifications
+**How:** Frontend generates a fresh UUID per "create payment" click, sent as the `Idempotency-Key` header.
+
+**Why:** The backend enforces uniqueness with a database constraint, not just application-level checks. It holds even under concurrent duplicate requests. Same key sent twice? Original payment is returned.
+
+### 5. Payment Expiry with QR Code Sharing
+
+**How:** Payments expire **15 minutes after creation**. Expiry is checked lazily (whenever a payment is read or acted on) — no background scheduler.
+
+**Why:** Mimics real payment link/UPI behavior. QR code encodes the same pay link; scanning and clicking both lead to the identical public pay page.
+
+### 6. JWT Access + Refresh Tokens with Redis Blacklist
+
+**How:**
+- **Access tokens** (15 min) → in-memory on frontend, never in localStorage
+- **Refresh tokens** (7 days) → httpOnly, secure, sameSite cookie (invisible to JS)
+- On logout → refresh token's `jti` stored in Redis with TTL = remaining lifetime
+
+**Why:** Short-lived access tokens for security; secure cookies for refresh tokens; Redis blacklist ensures logged-out tokens are immediately revoked, even though JWTs are stateless.
+
+### 7. Notifications via BullMQ (Real Webhook-like Behavior)
+
+**How:** Every status change enqueues a BullMQ job. A worker attempts HTTP POST delivery with 5 retries and exponential backoff.
+
+**Why:** Every attempt (success or failure) is logged to the `notifications` table. In production, the receiver URL comes from `webhookUrl` the merchant configures — sender-side logic unchanged.
+
+### 8. IDOR Protection via Query Scoping
+
+**How:** Every merchant-facing query includes `WHERE merchant_id = $1` from the verified JWT — never from request body or URL.
+
+**Why:** A merchant requesting another merchant's payment by ID gets a 404, not their data.
+
+---
+
+## 📡 API Endpoints
+
+### Authentication
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/auth/register` | Create merchant account |
+| `POST` | `/auth/login` | Login & get tokens |
+| `POST` | `/auth/refresh` | Refresh access token |
+| `POST` | `/auth/logout` | Logout & blacklist token |
+
+### Merchant Profile
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/merchants/me` | Get current merchant info |
+
+### Payments (Authenticated)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/payments` | Create a new payment |
+| `GET` | `/payments` | List all payments (merchant's) |
+| `GET` | `/payments/:id` | Get payment details |
+| `GET` | `/payments/:id/share` | Get shareable link & QR code |
+
+### Public Pay Page
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/pay/:id` | View payment (no auth required) |
+| `POST` | `/pay/:id/complete` | Complete or fail payment |
+
+### Refunds (Authenticated)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/payments/:id/refunds` | Create refund |
+| `GET` | `/payments/:id/refunds` | List refunds for payment |
+
+### Notifications (Authenticated)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/payments/:id/notifications` | List delivery attempts |
+
+---
+
+## 🔐 Security Highlights
+
+✅ **Password hashing** — bcrypt with salt  
+✅ **Parameterized queries** — prevents SQL injection  
+✅ **JWT + refresh tokens** — short-lived access, secure cookies  
+✅ **Redis token blacklist** — instant logout  
+✅ **Query scoping** — IDOR protection via merchant_id in WHERE clause  
+✅ **HTTPS in production** — secure cookies, secure flag on tokens  
+✅ **Idempotency keys** — prevents duplicate charge on retry
