@@ -15,10 +15,10 @@ export function getAccessToken() {
 
 export const apiClient = axios.create({
   baseURL: API_URL,
-  withCredentials: true, // sends the httpOnly refresh token cookie automatically
+  withCredentials: true, 
 });
 
-// attach the access token to every outgoing request
+
 apiClient.interceptors.request.use((config) => {
   if (accessToken) {
     config.headers.Authorization = `Bearer ${accessToken}`;

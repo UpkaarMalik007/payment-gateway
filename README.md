@@ -4,22 +4,22 @@ A simulated payment gateway built for the AND Payments full-stack assignment. Me
 
 ## 🚀 Live URLs
 
-- **API:** https://your-backend-url.onrender.com
-- **Dashboard:** https://your-frontend-url.vercel.app
+- **API:** https://payment-gateway-eeew.onrender.com
+- **Dashboard:**https://payment-gateway-1-84fi.onrender.com
 - **Repository:** https://github.com/UpkaarMalik007/payment-gateway
 
 ---
 
 ## 📚 Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| **Backend** | Node.js, Express, TypeScript |
-| **Database** | PostgreSQL (raw SQL via `pg`, no ORM) |
-| **Caching & Queue** | Redis (Upstash) + BullMQ |
-| **Authentication** | JWT (access + refresh tokens), bcrypt, Redis-based token blacklist |
-| **Frontend** | React, TypeScript, Vite, Tailwind CSS |
-| **Hosting** | Backend & frontend on Render, DB on Neon, Redis on Upstash |
+| Layer               | Technology                                                         |
+| ------------------- | ------------------------------------------------------------------ |
+| **Backend**         | Node.js, Express, TypeScript                                       |
+| **Database**        | PostgreSQL (raw SQL via `pg`, no ORM)                              |
+| **Caching & Queue** | Redis (Upstash) + BullMQ                                           |
+| **Authentication**  | JWT (access + refresh tokens), bcrypt, Redis-based token blacklist |
+| **Frontend**        | React, TypeScript, Vite, Tailwind CSS                              |
+| **Hosting**         | Backend & frontend on Render, DB on Neon, Redis on Upstash         |
 
 ---
 
@@ -130,12 +130,12 @@ Two distinct trust boundaries in one system:
 
 **Four tables** (plain SQL, no ORM) — see `db/schema.sql`:
 
-| Table | Purpose |
-|-------|---------|
-| **merchants** | `id`, `name`, `email` (unique), `password` (bcrypt), `created_at` |
-| **payments** | `id`, `merchant_id` (FK), `amount` (paise), `customer_name`, `customer_email`, `status`, `idempotency_key` (unique), `expires_at`, `created_at`, `updated_at` |
-| **refunds** | `id`, `payment_id` (FK), `amount` (paise), `reason`, `created_at` |
-| **notifications** | `id`, `payment_id` (FK), `event_type`, `status`, `attempt_count`, `last_attempt_at`, `created_at` |
+| Table             | Purpose                                                                                                                                                       |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **merchants**     | `id`, `name`, `email` (unique), `password` (bcrypt), `created_at`                                                                                             |
+| **payments**      | `id`, `merchant_id` (FK), `amount` (paise), `customer_name`, `customer_email`, `status`, `idempotency_key` (unique), `expires_at`, `created_at`, `updated_at` |
+| **refunds**       | `id`, `payment_id` (FK), `amount` (paise), `reason`, `created_at`                                                                                             |
+| **notifications** | `id`, `payment_id` (FK), `event_type`, `status`, `attempt_count`, `last_attempt_at`, `created_at`                                                             |
 
 ### Payment Status Lifecycle
 
@@ -153,6 +153,7 @@ pending
 ### 1. PostgreSQL over MongoDB
 
 **Why?** Payments have strict relational rules:
+
 - A refund can never exceed its payment
 - Every refund/notification must belong to exactly one payment
 - Postgres enforces this at the database level with **foreign keys**, **CHECK constraints**, and **unique constraints** on idempotency keys — rather than relying entirely on application code.
@@ -160,6 +161,7 @@ pending
 ### 2. Raw SQL over ORM
 
 **Why?** Using the `pg` driver directly with parameterized queries:
+
 - Every query is explicit and reviewable — nothing is hidden behind generation
 - Queries are organized by module (e.g., `payments.queries.ts`)
 - Multi-step operations use manual `BEGIN`/`COMMIT`/`ROLLBACK` transactions
@@ -186,6 +188,7 @@ pending
 ### 6. JWT Access + Refresh Tokens with Redis Blacklist
 
 **How:**
+
 - **Access tokens** (15 min) → in-memory on frontend, never in localStorage
 - **Refresh tokens** (7 days) → httpOnly, secure, sameSite cookie (invisible to JS)
 - On logout → refresh token's `jti` stored in Redis with TTL = remaining lifetime
@@ -210,47 +213,47 @@ pending
 
 ### Authentication
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/auth/register` | Create merchant account |
-| `POST` | `/auth/login` | Login & get tokens |
-| `POST` | `/auth/refresh` | Refresh access token |
-| `POST` | `/auth/logout` | Logout & blacklist token |
+| Method | Endpoint         | Description              |
+| ------ | ---------------- | ------------------------ |
+| `POST` | `/auth/register` | Create merchant account  |
+| `POST` | `/auth/login`    | Login & get tokens       |
+| `POST` | `/auth/refresh`  | Refresh access token     |
+| `POST` | `/auth/logout`   | Logout & blacklist token |
 
 ### Merchant Profile
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/merchants/me` | Get current merchant info |
+| Method | Endpoint        | Description               |
+| ------ | --------------- | ------------------------- |
+| `GET`  | `/merchants/me` | Get current merchant info |
 
 ### Payments (Authenticated)
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/payments` | Create a new payment |
-| `GET` | `/payments` | List all payments (merchant's) |
-| `GET` | `/payments/:id` | Get payment details |
-| `GET` | `/payments/:id/share` | Get shareable link & QR code |
+| Method | Endpoint              | Description                    |
+| ------ | --------------------- | ------------------------------ |
+| `POST` | `/payments`           | Create a new payment           |
+| `GET`  | `/payments`           | List all payments (merchant's) |
+| `GET`  | `/payments/:id`       | Get payment details            |
+| `GET`  | `/payments/:id/share` | Get shareable link & QR code   |
 
 ### Public Pay Page
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/pay/:id` | View payment (no auth required) |
-| `POST` | `/pay/:id/complete` | Complete or fail payment |
+| Method | Endpoint            | Description                     |
+| ------ | ------------------- | ------------------------------- |
+| `GET`  | `/pay/:id`          | View payment (no auth required) |
+| `POST` | `/pay/:id/complete` | Complete or fail payment        |
 
 ### Refunds (Authenticated)
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/payments/:id/refunds` | Create refund |
-| `GET` | `/payments/:id/refunds` | List refunds for payment |
+| Method | Endpoint                | Description              |
+| ------ | ----------------------- | ------------------------ |
+| `POST` | `/payments/:id/refunds` | Create refund            |
+| `GET`  | `/payments/:id/refunds` | List refunds for payment |
 
 ### Notifications (Authenticated)
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/payments/:id/notifications` | List delivery attempts |
+| Method | Endpoint                      | Description            |
+| ------ | ----------------------------- | ---------------------- |
+| `GET`  | `/payments/:id/notifications` | List delivery attempts |
 
 ---
 
