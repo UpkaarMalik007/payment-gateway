@@ -158,34 +158,25 @@ pending
 - Every refund/notification must belong to exactly one payment
 - Postgres enforces this at the database level with **foreign keys**, **CHECK constraints**, and **unique constraints** on idempotency keys — rather than relying entirely on application code.
 
-### 2. Raw SQL over ORM
-
-**Why?** Using the `pg` driver directly with parameterized queries:
-
-- Every query is explicit and reviewable — nothing is hidden behind generation
-- Queries are organized by module (e.g., `payments.queries.ts`)
-- Multi-step operations use manual `BEGIN`/`COMMIT`/`ROLLBACK` transactions
-- No surprises from ORM magic
-
-### 3. Simulated Payment Completion
+### 2. Simulated Payment Completion
 
 **Why?** The assignment's core requirements — lifecycle management, idempotency, refund validation, notification retries — are identical whether the payment is real or simulated. A real Razorpay/Stripe integration would require business KYC outside this scope and wouldn't change the state machine or refund logic.
 
 **In production:** Only the `POST /pay/:id/complete` endpoint would be replaced by a real gateway's webhook listener — the rest stays the same.
 
-### 4. Idempotency via Client-Generated Key
+### 3. Idempotency via Client-Generated Key
 
 **How:** Frontend generates a fresh UUID per "create payment" click, sent as the `Idempotency-Key` header.
 
 **Why:** The backend enforces uniqueness with a database constraint, not just application-level checks. It holds even under concurrent duplicate requests. Same key sent twice? Original payment is returned.
 
-### 5. Payment Expiry with QR Code Sharing
+### 4. Payment Expiry with QR Code Sharing
 
 **How:** Payments expire **15 minutes after creation**. Expiry is checked lazily (whenever a payment is read or acted on) — no background scheduler.
 
 **Why:** Mimics real payment link/UPI behavior. QR code encodes the same pay link; scanning and clicking both lead to the identical public pay page.
 
-### 6. JWT Access + Refresh Tokens with Redis Blacklist
+### 5. JWT Access + Refresh Tokens with Redis Blacklist
 
 **How:**
 
@@ -195,17 +186,12 @@ pending
 
 **Why:** Short-lived access tokens for security; secure cookies for refresh tokens; Redis blacklist ensures logged-out tokens are immediately revoked, even though JWTs are stateless.
 
-### 7. Notifications via BullMQ (Real Webhook-like Behavior)
+### 6. Notifications via BullMQ (Real Webhook-like Behavior)
 
 **How:** Every status change enqueues a BullMQ job. A worker attempts HTTP POST delivery with 5 retries and exponential backoff.
 
 **Why:** Every attempt (success or failure) is logged to the `notifications` table. In production, the receiver URL comes from `webhookUrl` the merchant configures — sender-side logic unchanged.
 
-### 8. IDOR Protection via Query Scoping
-
-**How:** Every merchant-facing query includes `WHERE merchant_id = $1` from the verified JWT — never from request body or URL.
-
-**Why:** A merchant requesting another merchant's payment by ID gets a 404, not their data.
 
 ---
 
